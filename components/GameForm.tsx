@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Game, Platform } from '../types';
 import { Button } from './Button';
-import { X, Trophy, Clock, Gamepad2, Star, Calendar } from 'lucide-react';
+import { X, Trophy, Clock, Gamepad2, Star, MessageSquare } from 'lucide-react';
 
 interface GameFormProps {
   game?: Game | null;
@@ -17,6 +17,7 @@ export const GameForm: React.FC<GameFormProps> = ({ game, onClose, onSave }) => 
   const [rating, setRating] = useState(game?.rating || 8);
   const [isPlatinum, setIsPlatinum] = useState(game?.is_platinum || false);
   const [hoursPlayed, setHoursPlayed] = useState(game?.hours_played || 0);
+  const [review, setReview] = useState(game?.review || '');
   
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,7 +33,8 @@ export const GameForm: React.FC<GameFormProps> = ({ game, onClose, onSave }) => 
         rating,
         is_platinum: isPlatinum,
         hours_played: hoursPlayed,
-        background_image: '' // Removido campo de URL, mantendo vazio
+        review,
+        background_image: '' 
       });
       onClose();
     } finally {
@@ -41,7 +43,7 @@ export const GameForm: React.FC<GameFormProps> = ({ game, onClose, onSave }) => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/95 backdrop-blur-xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
       <div className="glass rounded-t-[2.5rem] sm:rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-10 sm:zoom-in duration-300 border-x border-t sm:border border-white/10">
         <div className="flex items-center justify-between p-6 md:p-8 border-b border-white/5 bg-white/[0.02]">
           <div className="flex items-center gap-3">
@@ -58,7 +60,6 @@ export const GameForm: React.FC<GameFormProps> = ({ game, onClose, onSave }) => 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 md:space-y-6 max-h-[85vh] sm:max-h-[75vh] overflow-y-auto custom-scrollbar pb-10 sm:pb-8">
-          {/* Nome do Jogo */}
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 block">Nome do Jogo</label>
             <input
@@ -93,15 +94,13 @@ export const GameForm: React.FC<GameFormProps> = ({ game, onClose, onSave }) => 
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Data da Vitória</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  required
-                  value={completionDate}
-                  onChange={(e) => setCompletionDate(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-white font-bold"
-                />
-              </div>
+              <input
+                type="date"
+                required
+                value={completionDate}
+                onChange={(e) => setCompletionDate(e.target.value)}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-white font-bold"
+              />
             </div>
           </div>
 
@@ -134,6 +133,21 @@ export const GameForm: React.FC<GameFormProps> = ({ game, onClose, onSave }) => 
                 <Trophy size={18} className={isPlatinum ? 'animate-bounce' : ''} />
                 {isPlatinum ? 'PLATINADO!' : 'NÃO PLATINADO'}
               </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between items-center px-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Review / Comentário</label>
+            </div>
+            <div className="relative">
+              <MessageSquare className="absolute left-4 top-4 text-slate-700" size={18} />
+              <textarea
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                placeholder="O que achou do jogo?"
+                className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-12 pr-4 py-4 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-white font-medium text-sm placeholder:text-slate-700 resize-none"
+              />
             </div>
           </div>
 
