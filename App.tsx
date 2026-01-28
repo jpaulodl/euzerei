@@ -14,22 +14,12 @@ import {
   Search, 
   Eye, 
   EyeOff, 
-  User as UserIcon, 
-  Mail, 
-  Lock, 
   ChevronRight, 
-  Filter, 
-  ArrowUpDown,
-  Download,
   AlertCircle,
   WifiOff
 } from 'lucide-react';
-// @ts-ignore
-import { jsPDF } from 'jspdf';
-// @ts-ignore
-import 'jspdf-autotable';
 
-type SortOption = 'date-desc' | 'date-asc' | 'rating-desc' | 'rating-asc' | 'time-desc' | 'time-asc';
+type SortOption = 'date-desc' | 'date-asc' | 'rating-desc' | 'rating-asc';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -71,31 +61,33 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log("App inicializado. Checando sessão...");
     let mounted = true;
 
     const initAuth = async () => {
-      // Timeout de segurança: se em 5 segundos não houver resposta, tentamos mostrar a tela de login
       const timeoutId = setTimeout(() => {
         if (mounted && isLoading) {
-          console.warn("Auth initialization timed out.");
+          console.warn("A inicialização demorou muito, forçando carregamento.");
           setIsLoading(false);
         }
-      }, 5000);
+      }, 7000);
 
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
 
         if (session?.user) {
+          console.log("Sessão ativa encontrada:", session.user.email);
           if (mounted) {
             setUser(session.user as any);
             await fetchGames(session.user.id);
           }
         } else {
+          console.log("Nenhum usuário logado.");
           if (mounted) setIsLoading(false);
         }
       } catch (err) {
-        console.error("Erro crítico na inicialização:", err);
+        console.error("Falha na inicialização do Supabase:", err);
         if (mounted) {
           setIsLoading(false);
           setInitError(true);
@@ -108,6 +100,7 @@ const App: React.FC = () => {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Evento de Autenticação:", event);
       if (mounted) {
         if (session?.user) {
           setUser(session.user as any);
@@ -135,10 +128,6 @@ const App: React.FC = () => {
       if (isLogin) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        if (data.user) {
-          setUser(data.user as any);
-          await fetchGames(data.user.id);
-        }
       } else {
         if (password !== confirmPassword) throw new Error("As senhas não coincidem!");
 
@@ -150,18 +139,13 @@ const App: React.FC = () => {
 
         if (error) throw error;
 
-        if (data.user) {
-          if (!data.session) {
-            alert("Sucesso! Verifique seu e-mail para ativar sua conta.");
-            setIsLogin(true);
-          } else {
-            setUser(data.user as any);
-            await fetchGames(data.user.id);
-          }
+        if (data.user && !data.session) {
+          alert("Cadastro realizado! Verifique seu e-mail para ativar sua conta.");
+          setIsLogin(true);
         }
       }
     } catch (err: any) {
-      setAuthError(err.message || "Erro de conexão.");
+      setAuthError(err.message || "Erro ao conectar.");
     } finally {
       setIsAuthLoading(false);
     }
@@ -169,8 +153,6 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setGames([]);
   };
 
   const handleSaveGame = async (gameData: Partial<Game>) => {
@@ -211,7 +193,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 gap-4">
         <Loader2 className="animate-spin text-purple-500" size={40} />
-        <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest animate-pulse">Iniciando sistema...</p>
+        <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest animate-pulse">Carregando...</p>
       </div>
     );
   }
@@ -220,9 +202,9 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
         <WifiOff size={48} className="text-slate-800 mb-4" />
-        <h2 className="text-xl font-black uppercase italic italic text-white">Erro de Conexão</h2>
-        <p className="text-slate-500 text-sm mt-2 max-w-xs">Não foi possível conectar ao servidor. Verifique sua internet ou as chaves do Supabase.</p>
-        <Button onClick={() => window.location.reload()} className="mt-6 px-8">Tentar Novamente</Button>
+        <h2 className="text-xl font-black uppercase italic text-white">Erro de Conexão</h2>
+        <p className="text-slate-500 text-sm mt-2">Falha ao conectar com o banco de dados.</p>
+        <Button onClick={() => window.location.reload()} className="mt-6 px-8">Recarregar</Button>
       </div>
     );
   }
@@ -230,7 +212,7 @@ const App: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950/20">
-        <div className="glass max-w-lg w-full p-8 rounded-[2rem] space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="glass max-w-lg w-full p-8 rounded-[2rem] space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl">
           <div className="text-center">
             <div className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-purple-500/30">
               <Gamepad2 className="text-purple-500" size={32} />
@@ -253,13 +235,13 @@ const App: React.FC = () => {
                   required
                   value={gamertag}
                   onChange={(e) => setGamertag(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                   placeholder="Gamertag"
                 />
                 <select
                   value={mainPlatform}
                   onChange={(e) => setMainPlatform(e.target.value as MainPlatform)}
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                 >
                   <option value="PC">PC</option>
                   <option value="PlayStation">PS5</option>
@@ -273,7 +255,7 @@ const App: React.FC = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+              className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
               placeholder="E-mail"
             />
             <div className="relative">
@@ -282,7 +264,7 @@ const App: React.FC = () => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                 placeholder="Senha (min. 6 chars)"
                 minLength={6}
               />
@@ -296,16 +278,16 @@ const App: React.FC = () => {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                 placeholder="Repetir Senha"
               />
             )}
-            <Button type="submit" isLoading={isAuthLoading} className="w-full py-4 text-sm rounded-xl font-black uppercase italic">
+            <Button type="submit" isLoading={isAuthLoading} className="w-full py-4 text-sm rounded-xl font-black uppercase italic tracking-tighter shadow-lg shadow-purple-500/20">
               {isLogin ? 'Entrar' : 'Cadastrar'} <ChevronRight size={16} className="ml-1" />
             </Button>
           </form>
 
-          <button onClick={() => setIsLogin(!isLogin)} className="w-full text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-purple-400">
+          <button onClick={() => { setIsLogin(!isLogin); setAuthError(null); }} className="w-full text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-purple-400 transition-colors">
             {isLogin ? 'Criar nova conta' : 'Já sou cadastrado'}
           </button>
         </div>
@@ -323,22 +305,32 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
              <div className="text-right hidden sm:block">
-                <p className="text-[10px] font-black text-white leading-none uppercase">{user?.user_metadata?.gamertag || 'Player'}</p>
-                <p className="text-[8px] text-slate-600 font-bold uppercase">{user?.user_metadata?.main_platform || 'Gamer'}</p>
+                <p className="text-[10px] font-black text-white leading-none uppercase italic">{user?.user_metadata?.gamertag || 'Player'}</p>
+                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">{user?.user_metadata?.main_platform || 'Universal'}</p>
              </div>
-             <button onClick={handleLogout} className="p-2 bg-slate-900/50 rounded-xl text-slate-500 hover:text-red-400 border border-white/5"><LogOut size={18}/></button>
+             <button onClick={handleLogout} className="p-2 bg-slate-900/50 rounded-xl text-slate-500 hover:text-red-400 transition-all border border-white/5 shadow-sm"><LogOut size={18}/></button>
           </div>
         </div>
       </header>
+
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-          <h2 className="text-2xl font-black uppercase tracking-tighter italic">Minha Estante</h2>
-          <Button onClick={() => { setEditingGame(null); setIsModalOpen(true); }} className="w-full sm:w-auto rounded-xl px-6 py-3 font-black uppercase text-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-500/10 rounded-xl text-purple-500 shadow-inner border border-purple-500/10">
+              <LayoutGrid size={20} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black uppercase tracking-tighter italic leading-none">Minha Estante</h2>
+              <p className="text-slate-500 text-[9px] font-bold mt-1 uppercase tracking-widest">{games.length} JOGOS CONCLUÍDOS</p>
+            </div>
+          </div>
+          <Button onClick={() => { setEditingGame(null); setIsModalOpen(true); }} className="w-full sm:w-auto rounded-xl px-6 py-3 font-black uppercase tracking-tighter italic text-xs shadow-xl shadow-purple-500/10">
             <Plus size={16} className="mr-1" /> Novo Jogo
           </Button>
         </div>
+
         {processedGames.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 animate-in fade-in duration-500">
             {processedGames.map(game => (
               <GameCard 
                 key={game.id} 
@@ -350,14 +342,24 @@ const App: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-24 glass rounded-[3rem] border-dashed border-white/5">
-            <Gamepad2 size={40} className="mx-auto mb-4 text-slate-800" />
-            <h3 className="text-lg font-black uppercase italic">Nada por aqui ainda</h3>
+          <div className="text-center py-24 glass rounded-[3rem] border-dashed border-white/5 flex flex-col items-center gap-4">
+            <Gamepad2 size={40} className="text-slate-800" />
+            <div>
+              <h3 className="text-lg font-black uppercase italic tracking-tighter text-white">Nada por aqui ainda</h3>
+              <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-1">Sua jornada épica começa com o primeiro registro!</p>
+            </div>
             <Button onClick={() => setIsModalOpen(true)} variant="ghost" className="mt-4 text-[10px] font-black uppercase">Adicionar Primeiro Jogo</Button>
           </div>
         )}
       </main>
-      {isModalOpen && <GameForm game={editingGame} onClose={() => setIsModalOpen(false)} onSave={handleSaveGame} />}
+
+      {isModalOpen && (
+        <GameForm 
+          game={editingGame} 
+          onClose={() => setIsModalOpen(false)} 
+          onSave={handleSaveGame} 
+        />
+      )}
     </div>
   );
 };

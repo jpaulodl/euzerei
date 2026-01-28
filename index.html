@@ -21,36 +21,37 @@
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .neon-purple {
-            color: #a78bfa;
-            text-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
         }
-        .btn-primary {
-            background-color: #8b5cf6;
-            transition: all 0.3s ease;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
         }
-        .btn-primary:hover {
-            background-color: #7c3aed;
-            box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.463.0",
+    "@google/genai": "https://esm.sh/@google/genai@0.21.0",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.46.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "jspdf": "https://esm.sh/jspdf@^2.5.1",
-    "jspdf-autotable": "https://esm.sh/jspdf-autotable@^3.8.2",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.48.1"
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
 </head>
 <body class="antialiased">
     <div id="root"></div>
+    <!-- Script essencial que faz o React iniciar -->
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>
