@@ -499,9 +499,7 @@ const App: React.FC = () => {
         {showAd && (
           <div className="mb-10 w-full flex flex-col items-center animate-in zoom-in duration-700">
             <div className="w-full flex justify-between items-center mb-1.5 px-2">
-              <span className="text-[7px] font-black uppercase tracking-[0.3em] text-slate-600">Google AdSense - Publicidade Patrocinada</span>
               <button onClick={() => setShowAd(false)} className="text-slate-700 hover:text-white transition-colors" title="Fechar anúncio">
-                <X size={10} />
               </button>
             </div>
             <div className="w-full glass rounded-[2rem] border border-white/5 bg-slate-900/20 flex items-center justify-center overflow-hidden min-h-[100px] md:min-h-[120px] relative group shadow-2xl">
@@ -519,7 +517,8 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-slate-400 text-[10px] font-black uppercase italic tracking-widest text-center">
-                  Espaço para Banner 728x90 ou Responsivo
+                  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8784674889395340"
+                    crossorigin="anonymous"></script>
                 </div>
               </div>
 
