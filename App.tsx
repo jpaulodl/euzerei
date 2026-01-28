@@ -39,11 +39,9 @@ const App: React.FC = () => {
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Filtering and Sorting state
   const [filterPlatform, setFilterPlatform] = useState<Platform | 'Todos'>('Todos');
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
 
-  // Auth states
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,6 +53,7 @@ const App: React.FC = () => {
 
   const fetchGames = useCallback(async (userId: string) => {
     try {
+      console.log("Buscando jogos para o usuário:", userId);
       const { data, error } = await supabase
         .from('games')
         .select('*')
@@ -62,7 +61,7 @@ const App: React.FC = () => {
         .order('completion_date', { ascending: false });
       
       if (error) throw error;
-      if (data) setGames(data);
+      setGames(data || []);
     } catch (err: any) {
       console.error("Erro ao carregar jogos:", err.message);
     } finally {
@@ -71,27 +70,36 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Inicialização da sessão
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user as any);
-        fetchGames(session.user.id);
-      } else {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session?.user) {
+          console.log("Sessão encontrada:", session.user.email);
+          setUser(session.user as any);
+          await fetchGames(session.user.id);
+        } else {
+          console.log("Nenhuma sessão ativa.");
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Erro na inicialização da auth:", err);
         setIsLoading(false);
       }
     };
 
     initAuth();
 
-    // Listener de mudanças na auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Mudança no estado de Auth:", event);
       if (session?.user) {
         setUser(session.user as any);
         fetchGames(session.user.id);
       } else {
         setUser(null);
         setGames([]);
+        setIsLoading(false);
       }
     });
 
@@ -105,16 +113,13 @@ const App: React.FC = () => {
 
     try {
       if (isLogin) {
-        // Fluxo de Login
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        
         if (data.user) {
           setUser(data.user as any);
-          fetchGames(data.user.id);
+          await fetchGames(data.user.id);
         }
       } else {
-        // Fluxo de Cadastro
         if (password !== confirmPassword) {
           throw new Error("As senhas não coincidem!");
         }
@@ -134,17 +139,17 @@ const App: React.FC = () => {
 
         if (data.user) {
           if (!data.session) {
-            alert("Sucesso! Verifique seu e-mail para confirmar a conta e poder fazer o login.");
+            alert("Cadastro realizado! Verifique seu e-mail para ativar sua conta.");
             setIsLogin(true);
           } else {
             setUser(data.user as any);
-            fetchGames(data.user.id);
+            await fetchGames(data.user.id);
           }
         }
       }
     } catch (err: any) {
-      console.error("Auth Error:", err);
-      setAuthError(err.message || "Ocorreu um erro na autenticação.");
+      console.error("Erro de Autenticação:", err.message);
+      setAuthError(err.message || "Falha na autenticação.");
     } finally {
       setIsAuthLoading(false);
     }
@@ -201,24 +206,27 @@ const App: React.FC = () => {
     return result;
   }, [games, searchQuery, filterPlatform, sortBy]);
 
-  if (isLoading && !user) {
+  // Renderização de Carregamento
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <Loader2 className="animate-spin text-purple-500" size={48} />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 gap-4">
+        <Loader2 className="animate-spin text-purple-500" size={40} />
+        <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest animate-pulse">Carregando sua jornada...</p>
       </div>
     );
   }
 
+  // Renderização de Login/Cadastro
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950/20">
         <div className="glass max-w-lg w-full p-8 rounded-[2rem] space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl">
           <div className="text-center">
-            <div className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-purple-500/30">
+            <div className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-purple-500/30 shadow-lg shadow-purple-500/10">
               <Gamepad2 className="text-purple-500" size={32} />
             </div>
             <h1 className="text-3xl font-black uppercase italic tracking-tighter">EuZerei<span className="text-purple-500">!</span></h1>
-            <p className="text-slate-500 text-sm mt-1">Sua coleção épica começa aqui.</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Gestão de Coleção Gamer</p>
           </div>
 
           {authError && (
@@ -238,21 +246,21 @@ const App: React.FC = () => {
                     required
                     value={gamertag}
                     onChange={(e) => setGamertag(e.target.value)}
-                    className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white"
-                    placeholder="Ex: Ninja_X"
+                    className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white font-bold"
+                    placeholder="Ninja"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Plataforma</label>
+                  <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Base</label>
                   <select
                     value={mainPlatform}
                     onChange={(e) => setMainPlatform(e.target.value as MainPlatform)}
-                    className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white"
+                    className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white font-bold"
                   >
                     <option value="PC">PC</option>
-                    <option value="PlayStation">PlayStation</option>
+                    <option value="PlayStation">PS5</option>
                     <option value="Xbox">Xbox</option>
-                    <option value="Nintendo">Nintendo</option>
+                    <option value="Nintendo">Switch</option>
                   </select>
                 </div>
               </div>
@@ -265,7 +273,7 @@ const App: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white"
+                className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white font-bold"
                 placeholder="seu@email.com"
               />
             </div>
@@ -278,7 +286,7 @@ const App: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white font-bold"
                   placeholder="••••••••"
                   minLength={6}
                 />
@@ -300,14 +308,14 @@ const App: React.FC = () => {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-white font-bold"
                   placeholder="••••••••"
                 />
               </div>
             )}
 
             <Button type="submit" isLoading={isAuthLoading} className="w-full py-4 text-sm rounded-xl font-black uppercase italic tracking-tighter shadow-lg shadow-purple-500/20">
-              {isLogin ? 'Entrar Agora' : 'Criar minha conta'} <ChevronRight size={16} className="ml-1" />
+              {isLogin ? 'Iniciar Sessão' : 'Criar Conta Grátis'} <ChevronRight size={16} className="ml-1" />
             </Button>
           </form>
 
@@ -316,7 +324,7 @@ const App: React.FC = () => {
               onClick={() => { setIsLogin(!isLogin); setAuthError(null); }}
               className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-purple-400 transition-colors"
             >
-              {isLogin ? 'Não tem conta? Registre-se' : 'Já é membro? Faça login'}
+              {isLogin ? 'Ainda não tem conta? Registre-se' : 'Já é cadastrado? Entrar'}
             </button>
           </div>
         </div>
@@ -324,6 +332,7 @@ const App: React.FC = () => {
     );
   }
 
+  // Renderização do App Principal
   return (
     <div className="min-h-screen pb-20 bg-slate-950">
       <header className="sticky top-0 z-50 glass border-b border-white/5 px-4 md:px-8 py-3">
@@ -333,7 +342,7 @@ const App: React.FC = () => {
               <Gamepad2 className="text-purple-500" size={24} />
               <h1 className="text-lg font-black uppercase italic tracking-tighter">EuZerei<span className="text-purple-500">!</span></h1>
             </div>
-            <button onClick={handleLogout} className="sm:hidden p-2 text-slate-500"><LogOut size={18}/></button>
+            <button onClick={handleLogout} className="sm:hidden p-2 text-slate-500 hover:text-red-400 transition-colors"><LogOut size={18}/></button>
           </div>
 
           <div className="w-full sm:max-w-xs">
@@ -341,7 +350,7 @@ const App: React.FC = () => {
               <Search className="text-slate-500" size={14} />
               <input 
                 type="text"
-                placeholder="Filtrar jogos..."
+                placeholder="Pesquisar títulos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-transparent border-none focus:outline-none w-full text-xs font-bold text-white placeholder:text-slate-700"
@@ -351,10 +360,12 @@ const App: React.FC = () => {
 
           <div className="hidden sm:flex items-center gap-4">
              <div className="text-right">
-                <p className="text-[10px] font-black text-white leading-none uppercase italic">{user.user_metadata.gamertag || 'Player'}</p>
-                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">{user.user_metadata.main_platform}</p>
+                <p className="text-[10px] font-black text-white leading-none uppercase italic">{user?.user_metadata?.gamertag || 'Player'}</p>
+                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">{user?.user_metadata?.main_platform || 'Universal'}</p>
              </div>
-             <button onClick={handleLogout} className="p-2 bg-slate-900/50 rounded-xl text-slate-500 hover:text-red-400 transition-colors border border-white/5"><LogOut size={18}/></button>
+             <button onClick={handleLogout} className="p-2 bg-slate-900/50 rounded-xl text-slate-500 hover:text-red-400 transition-colors border border-white/5" title="Sair">
+               <LogOut size={18}/>
+             </button>
           </div>
         </div>
       </header>
@@ -362,16 +373,16 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-500/10 rounded-xl text-purple-500 shadow-inner">
+            <div className="p-2.5 bg-purple-500/10 rounded-xl text-purple-500 shadow-inner border border-purple-500/10">
               <LayoutGrid size={20} />
             </div>
             <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter italic leading-none">Meus Troféus</h2>
-                <p className="text-slate-500 text-[9px] font-bold mt-1 uppercase tracking-widest">{games.length} JOGOS NO TOTAL</p>
+                <h2 className="text-2xl font-black uppercase tracking-tighter italic leading-none">Minha Estante</h2>
+                <p className="text-slate-500 text-[9px] font-bold mt-1 uppercase tracking-widest">{games.length} JOGOS CONCLUÍDOS</p>
             </div>
           </div>
           <Button onClick={() => { setEditingGame(null); setIsModalOpen(true); }} className="w-full sm:w-auto rounded-xl px-6 py-3 font-black uppercase tracking-tighter italic text-xs shadow-xl shadow-purple-500/10">
-            <Plus size={16} className="mr-1" /> Novo Jogo
+            <Plus size={16} className="mr-1" /> Adicionar Jogo
           </Button>
         </div>
 
@@ -383,15 +394,23 @@ const App: React.FC = () => {
                 game={game} 
                 onEdit={(g) => { setEditingGame(g); setIsModalOpen(true); }}
                 onDelete={handleDeleteGame}
-                onShare={() => {}} // Implementação de share simples no GameCard
+                onShare={(g) => {
+                  const text = `Zerei "${g.title}"! Nota ${g.rating}/10. 🏆 #EuZerei`;
+                  navigator.clipboard.writeText(text).then(() => alert("Copiado para compartilhar!"));
+                }}
               />
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 glass rounded-[2.5rem] border-dashed border-white/5">
-            <Gamepad2 size={40} className="mx-auto mb-4 text-slate-800" />
-            <h3 className="text-lg font-black uppercase italic tracking-tighter">Sua estante está vazia</h3>
-            <p className="text-slate-500 mt-2 text-xs font-bold uppercase tracking-widest">Adicione seu primeiro jogo concluído agora!</p>
+          <div className="text-center py-24 glass rounded-[3rem] border-dashed border-white/5 flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-slate-900/50 rounded-3xl flex items-center justify-center text-slate-800">
+              <Gamepad2 size={32} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black uppercase italic tracking-tighter">Sua coleção está vazia</h3>
+              <p className="text-slate-500 mt-1 text-[10px] font-bold uppercase tracking-widest">O primeiro registro é sempre o mais especial!</p>
+            </div>
+            <Button onClick={() => setIsModalOpen(true)} variant="ghost" className="mt-2 text-[10px] font-black uppercase">Começar Agora</Button>
           </div>
         )}
       </main>
